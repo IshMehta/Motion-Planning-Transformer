@@ -154,7 +154,7 @@ if __name__ == "__main__":
     validationData = DataLoader(valDataset, num_workers=5, collate_fn=PaddedSequence, batch_size=batch_size)
 
     # Increase number of epochs.
-    n_epochs = 70
+    n_epochs = 1
     results = {}
     train_loss = []
     val_loss = []
