@@ -100,7 +100,6 @@ if __name__ == "__main__":
     dataFolder="maze4/"
     print(f"Using data from {dataFolder}")
 
-    batch_size = args.batchSize
     device = 'cpu'
     if torch.cuda.is_available():
         print("Using GPU....")
@@ -142,7 +141,7 @@ if __name__ == "__main__":
     )
        
     trainDataset = PathDataLoader(
-        env_list=list(range(1750)),
+        env_list=list(range(3000)),
         dataFolder=osp.join(dataFolder, 'train')
     )
     trainingData = DataLoader(trainDataset, num_workers=15, collate_fn=PaddedSequence, batch_size=batch_size)
