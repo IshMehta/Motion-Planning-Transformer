@@ -270,7 +270,7 @@ if __name__ == '__main__':
     
     stepSize = 10
     #should be 3000
-    for i in tqdm(range(3000), desc = "Maze Training Progress"):
+    for i in tqdm(range(500), desc = "Maze Training Progress"):
         #print(f'We are on maze {i} of {3000}')
         old_envFolder = f'maze4\\train\env{i:06d}'
         new_envFolder = f'new_maze\\train\env{i:06d}'
@@ -281,12 +281,12 @@ if __name__ == '__main__':
         img2 = cv2.imread(map_file_path)
         cv2.imwrite(new_map_file_path, img2)
         #should be 25
-        for j in range(25):
+        for j in range(20, 25):
             #print(f'We are on path {j} of {25} for maze {i}')
             start_pos, goal_pos = getStart_and_goal(old_envFolder, j)
             #print(start_pos, goal_pos)
             time_list = []
-            number_of_times = 5
+            number_of_times = 3
             rrt_path = []
             data = {}
             for k in range(number_of_times):
@@ -310,7 +310,7 @@ if __name__ == '__main__':
                 pickle.dump(data, f)
 ################################################################################################################################################################################           
     #should be 500
-    for i in tqdm(range(500), desc = "Maze Validation Progress"):
+    for i in tqdm(range(100), desc = "Maze Validation Progress"):
         #print(f'We are on maze {i} of {3000}')
         old_envFolder = f'maze4\\val\env{i:06d}'
         new_envFolder = f'new_maze\\val\env{i:06d}'
