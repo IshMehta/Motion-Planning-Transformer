@@ -295,7 +295,7 @@ if __name__ == '__main__':
                     try:
                         node_list = [0]
                         start_time = time.time()
-                        rrt_path = RRT(img, img2, start_pos, goal_pos, stepSize, True)
+                        rrt_path = RRT(img, img2, start_pos, goal_pos, stepSize, False)
                         end_time = time.time()
                         print(f'Succeeded on map {i} at ({start_pos[0]}, {start_pos[1]}) , ({goal_pos[0]}, {goal_pos[1]}),  Iteration: {k+1}/{number_of_times}') 
                         success = True
