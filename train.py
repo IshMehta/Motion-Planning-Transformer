@@ -141,20 +141,20 @@ if __name__ == "__main__":
     )
        
     trainDataset = PathDataLoader(
-        env_list=list(range(3000)),
+        env_list=list(range(10)),
         dataFolder=osp.join(dataFolder, 'train')
     )
-    trainingData = DataLoader(trainDataset, num_workers=15, collate_fn=PaddedSequence, batch_size=batch_size)
+    trainingData = DataLoader(trainDataset, num_workers=12, collate_fn=PaddedSequence, batch_size=batch_size)
 
     # Validation Data
     valDataset = PathDataLoader(
-        env_list=list(range(2500)),
+        env_list=list(range(10)),
         dataFolder=osp.join(dataFolder, 'val')
     )
-    validationData = DataLoader(valDataset, num_workers=5, collate_fn=PaddedSequence, batch_size=batch_size)
+    validationData = DataLoader(valDataset, num_workers=12, collate_fn=PaddedSequence, batch_size=batch_size)
 
     # Increase number of epochs.
-    n_epochs = 1
+    n_epochs = 6
     results = {}
     train_loss = []
     val_loss = []
@@ -169,7 +169,19 @@ if __name__ == "__main__":
         indent=4
     )
     writer = SummaryWriter(log_dir=trainDataFolder)
-    for n in range(n_epochs):
+
+    # Check if checkpoint exists and load it
+    try:
+        checkpoint = torch.load("checkpoint.pt")
+        transformer.load_state_dict(checkpoint['model_state_dict'])
+        optimizer._optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        start_epoch = checkpoint['epoch'] + 1  # Continue from next epoch
+        print(f"Loaded checkpoint from epoch {checkpoint['epoch']}")
+    except FileNotFoundError:
+        start_epoch = 0  # Start from scratch if no checkpoint found
+        print("No checkpoint found. Starting from scratch.")
+
+    for n in range(start_epoch, n_epochs):
         train_total_loss, train_n_correct = train_epoch(transformer, trainingData, optimizer, device)
         val_total_loss, val_n_correct = eval_epoch(transformer, validationData, device)
         print(f"Epoch {n} Loss: {train_total_loss}")
@@ -207,3 +219,13 @@ if __name__ == "__main__":
         writer.add_scalar('Loss/test', val_total_loss, n)
         writer.add_scalar('Accuracy/train', train_n_correct/len(trainDataset), n)
         writer.add_scalar('Accuracy/test', val_n_correct/len(valDataset), n)
+
+        # Save checkpoint
+        if n % 2 == 0:  # checkpoint every other epoch
+            torch.save({
+                'epoch': n,
+                'model_state_dict': transformer.state_dict(),
+                'optimizer_state_dict': optimizer._optimizer.state_dict(),
+                'loss': train_total_loss,
+            }, "checkpoint.pt")
+            print(f"Checkpoint saved at epoch {n}")
