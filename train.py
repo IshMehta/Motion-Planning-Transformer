@@ -97,7 +97,7 @@ def eval_epoch(model, validationData, device):
 
 if __name__ == "__main__":
     batch_size = 16
-    dataFolder="maze4/"
+    dataFolder="new_maze/"
     print(f"Using data from {dataFolder}")
 
     device = 'cpu'
@@ -184,9 +184,9 @@ if __name__ == "__main__":
     for n in range(start_epoch, n_epochs):
         train_total_loss, train_n_correct = train_epoch(transformer, trainingData, optimizer, device)
         val_total_loss, val_n_correct = eval_epoch(transformer, validationData, device)
-        print(f"Epoch {n} Loss: {train_total_loss}")
-        print(f"Epoch {n} Loss: {val_total_loss}")
-        print(f"Epoch {n} Accuracy {val_n_correct/len(valDataset)}")
+        print(f"Epoch {n}/{n_epochs} Loss: {train_total_loss}")
+        print(f"Epoch {n}/{n_epochs} Loss: {val_total_loss}")
+        print(f"Epoch {n}/{n_epochs} Accuracy {val_n_correct/len(valDataset)}")
 
         # Log data.
         train_loss.append(train_total_loss)
@@ -220,12 +220,11 @@ if __name__ == "__main__":
         writer.add_scalar('Accuracy/train', train_n_correct/len(trainDataset), n)
         writer.add_scalar('Accuracy/test', val_n_correct/len(valDataset), n)
 
-        # Save checkpoint
-        if n % 2 == 0:  # checkpoint every other epoch
-            torch.save({
-                'epoch': n,
-                'model_state_dict': transformer.state_dict(),
-                'optimizer_state_dict': optimizer._optimizer.state_dict(),
-                'loss': train_total_loss,
-            }, "checkpoint.pt")
-            print(f"Checkpoint saved at epoch {n}")
+    # Save checkpoint
+    torch.save({
+        'epoch': n,
+        'model_state_dict': transformer.state_dict(),
+        'optimizer_state_dict': optimizer._optimizer.state_dict(),
+        'loss': train_total_loss,
+    }, "checkpoint.pt")
+    print(f"Checkpoint saved at epoch {n}")

@@ -129,10 +129,11 @@ class PathDataLoader(Dataset):
         assert isinstance(env_list, list), "Needs to be a list"
         self.num_env = len(env_list)
         self.env_list = env_list
-        self.indexDict = [(envNum, i) 
+        self.indexDict = [(envNum, i + 20) 
             for envNum in env_list 
                 for i in range(len(os.listdir(osp.join(dataFolder, f'env{envNum:06d}')))-1)
             ]
+        
         self.dataFolder = dataFolder
     
 
@@ -150,29 +151,29 @@ class PathDataLoader(Dataset):
         with open(osp.join(self.dataFolder, f'env{env:06d}', f'path_{idx_sample}.p'), 'rb') as f:
             data = pickle.load(f)
 
-        if data['success']:
-            path = data['path_interpolated']
-            # Mark goal region
-            goal_index = geom2pix(path[-1, :])
-            start_index = geom2pix(path[0, :])
-            mapEncoder = get_encoder_input(mapEnvg, goal_index, start_index)            
+        # if data['success']:
+        path = data['path_interpolated']
+        # Mark goal region
+        goal_index = geom2pix(path[-1, :])
+        start_index = geom2pix(path[0, :])
+        mapEncoder = get_encoder_input(mapEnvg, goal_index, start_index)            
 
-            AnchorPointsPos = []
-            for pos in path:
-                indices, = geom2pixMatpos(pos)
-                for index in indices:
-                    if index not in AnchorPointsPos:
-                        AnchorPointsPos.append(index)
+        AnchorPointsPos = []
+        for pos in path:
+            indices, = geom2pixMatpos(pos)
+            for index in indices:
+                if index not in AnchorPointsPos:
+                    AnchorPointsPos.append(index)
 
-            backgroundPoints = list(set(range(len(hashTable)))-set(AnchorPointsPos))
-            numBackgroundSamp = min(len(backgroundPoints), 2*len(AnchorPointsPos))
-            AnchorPointsNeg = np.random.choice(backgroundPoints, size=numBackgroundSamp, replace=False).tolist()
-            
-            anchor = torch.cat((torch.tensor(AnchorPointsPos), torch.tensor(AnchorPointsNeg)))
-            labels = torch.zeros_like(anchor)
-            labels[:len(AnchorPointsPos)] = 1
-            return {
-                'map':torch.as_tensor(mapEncoder), 
-                'anchor':anchor, 
-                'labels':labels
-            }
+        backgroundPoints = list(set(range(len(hashTable)))-set(AnchorPointsPos))
+        numBackgroundSamp = min(len(backgroundPoints), 2*len(AnchorPointsPos))
+        AnchorPointsNeg = np.random.choice(backgroundPoints, size=numBackgroundSamp, replace=False).tolist()
+        
+        anchor = torch.cat((torch.tensor(AnchorPointsPos), torch.tensor(AnchorPointsNeg)))
+        labels = torch.zeros_like(anchor)
+        labels[:len(AnchorPointsPos)] = 1
+        return {
+            'map':torch.as_tensor(mapEncoder), 
+            'anchor':anchor, 
+            'labels':labels
+        }
