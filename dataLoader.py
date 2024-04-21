@@ -129,7 +129,7 @@ class PathDataLoader(Dataset):
         assert isinstance(env_list, list), "Needs to be a list"
         self.num_env = len(env_list)
         self.env_list = env_list
-        self.indexDict = [(envNum, i + 20) 
+        self.indexDict = [(envNum, i) 
             for envNum in env_list 
                 for i in range(len(os.listdir(osp.join(dataFolder, f'env{envNum:06d}')))-1)
             ]
