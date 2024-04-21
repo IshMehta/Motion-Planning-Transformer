@@ -101,9 +101,9 @@ if __name__ == "__main__":
     print(f"Using data from {dataFolder}")
 
     device = 'cpu'
-    if torch.cuda.is_available():
-        print("Using GPU....")
-        device = torch.device('cuda')
+    # if torch.cuda.is_available():
+    #     print("Using GPU....")
+    #     device = torch.device('cuda')
 
     if torch.cuda.device_count() > 1:
         batch_size = batch_size * torch.cuda.device_count()
