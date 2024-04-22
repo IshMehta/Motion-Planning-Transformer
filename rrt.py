@@ -16,6 +16,8 @@ import time
 from tqdm import tqdm
 from os import path as osp
 import pickle
+import multiprocessing
+from tqdm.contrib.concurrent import process_map 
 
 class Nodes:
     """Class to store the RRT graph"""
@@ -260,92 +262,160 @@ def interpolated_path(path, number_of_interpolations):
     return np.concatenate((x,y), axis = 1)
     
     
-      
+def process_maze_chunk(chunk):
+    stepSize = 10
+    #should be 3000
+    counter = 0 + chunk[0]
+    for i in tqdm(chunk, desc = "Maze Training Progress"):
+        #print(f'We are on maze {i} of {3000}')
+
+        old_envFolder = f'maze4/train/env{i:06d}'
+        if os.path.exists(old_envFolder):
+            
+            new_envFolder = f'new_maze_2/train/env{counter:06d}'
+            map_file_path = osp.join(old_envFolder, f'map_{i}.png')
+            new_map_file_path = osp.join(new_envFolder, f'map_{counter}.png')
+            os.makedirs(new_envFolder)
+            img = cv2.imread(map_file_path, 0)
+            img2 = cv2.imread(map_file_path)
+            cv2.imwrite(new_map_file_path, img2)
+        
+            #should be 25
+            for j in tqdm(range(25), desc =" inner loop ", leave=False):
+                #print(f'We are on path {j} of {25} for maze {i}')
+                start_pos, goal_pos = getStart_and_goal(old_envFolder, j)
+                #print(start_pos, goal_pos)
+                time_list = []
+                number_of_times = 3
+                rrt_path = []
+                data = {}
+                for k in range(number_of_times):
+                    success = False
+                    while success == False:
+                        try:
+                            
+                            node_list = [0]
+                            start_time = time.time()
+                            rrt_path = RRT(img, img2, start_pos, goal_pos, stepSize, False)
+                            end_time = time.time()
+                            # print(f'Succeeded on map {i} at ({start_pos[0]}, {start_pos[1]}) , ({goal_pos[0]}, {goal_pos[1]}),  Iteration: {k+1}/{number_of_times}') 
+                            success = True
+                        except Exception as e:
+                            pass
+                                # print(f'Failed on map {i} at ({start_pos[0]}, {start_pos[1]}) , ({goal_pos[0]}, {goal_pos[1]}), Trying again, Iteration{k+1}/{number_of_times}')
+                    time_list.append(end_time - start_time)
+                # print(f'Average time for map {i} with start pos ({start_pos[0]}, {start_pos[1]}) and end pos ({goal_pos[0]}, {goal_pos[1]}) was {sum(time_list) / len(time_list)}')
+                data['path'] = rrt_path
+                data['path_interpolated'] = interpolated_path(rrt_path, 20)
+                data['success'] = True
+                data['times'] = time_list
+                with open(osp.join(new_envFolder, f'path_{j}.p'), 'wb') as f:
+                    pickle.dump(data, f)
+            counter+=1
+
 
 
 if __name__ == '__main__':
     if not osp.exists("new_maze"):
         os.makedirs("new_maze/train")
         os.makedirs("new_maze/val")
+
+    # num_processes = multiprocessing.cpu_count()
+    # chunks = [range(chunk_start, chunk_start + 10) for chunk_start in range(0, 3000, 10)] 
+    # with multiprocessing.Pool(processes=num_processes) as pool:
+    #     pool.map(process_maze_chunk, chunks)
+    #     pool.close()
+    #     pool.join()
+
     
     stepSize = 10
     #should be 3000
+    counter = 0
     for i in tqdm(range(500), desc = "Maze Training Progress"):
         #print(f'We are on maze {i} of {3000}')
-        old_envFolder = f'maze4\\train\env{i:06d}'
-        new_envFolder = f'new_maze\\train\env{i:06d}'
+        old_envFolder = f'maze4/train/env{i:06d}'
+        new_envFolder = f'new_maze_2/train/env{counter:06d}'
         map_file_path = osp.join(old_envFolder, f'map_{i}.png')
-        new_map_file_path = osp.join(new_envFolder, f'map_{i}.png')
+        new_map_file_path = osp.join(new_envFolder, f'map_{counter}.png')
         os.makedirs(new_envFolder)
         img = cv2.imread(map_file_path, 0)
         img2 = cv2.imread(map_file_path)
         cv2.imwrite(new_map_file_path, img2)
-        #should be 25
-        for j in range(20, 25):
-            #print(f'We are on path {j} of {25} for maze {i}')
-            start_pos, goal_pos = getStart_and_goal(old_envFolder, j)
-            #print(start_pos, goal_pos)
-            time_list = []
-            number_of_times = 3
-            rrt_path = []
-            data = {}
-            for k in range(number_of_times):
-                success = False
-                while success == False:
-                    try:
-                        node_list = [0]
-                        start_time = time.time()
-                        rrt_path = RRT(img, img2, start_pos, goal_pos, stepSize, False)
-                        end_time = time.time()
-                        print(f'Succeeded on map {i} at ({start_pos[0]}, {start_pos[1]}) , ({goal_pos[0]}, {goal_pos[1]}),  Iteration: {k+1}/{number_of_times}') 
-                        success = True
-                    except Exception as e:
-                            print(f'Failed on map {i} at ({start_pos[0]}, {start_pos[1]}) , ({goal_pos[0]}, {goal_pos[1]}), Trying again, Iteration{k+1}/{number_of_times}')
-                time_list.append(end_time - start_time)
-            print(f'Average time for map {i} with start pos ({start_pos[0]}, {start_pos[1]}) and end pos ({goal_pos[0]}, {goal_pos[1]}) was {sum(time_list) / len(time_list)}')
-            data['path'] = rrt_path
-            data['path_interpolated'] = interpolated_path(rrt_path, 20)
-            data['times'] = time_list
-            with open(osp.join(new_envFolder, f'path_{j}.p'), 'wb') as f:
-                pickle.dump(data, f)
+        if os.path.exists(old_envFolder):
+            #should be 25
+            for j in tqdm(range(25), desc =" inner loop ", leave=False):
+                #print(f'We are on path {j} of {25} for maze {i}')
+                start_pos, goal_pos = getStart_and_goal(old_envFolder, j)
+                #print(start_pos, goal_pos)
+                time_list = []
+                number_of_times = 3
+                rrt_path = []
+                data = {}
+                for k in range(number_of_times):
+                    success = False
+                    while success == False:
+                        try:
+                            node_list = [0]
+                            start_time = time.time()
+                            rrt_path = RRT(img, img2, start_pos, goal_pos, stepSize, False)
+                            end_time = time.time()
+                            # print(f'Succeeded on map {i} at ({start_pos[0]}, {start_pos[1]}) , ({goal_pos[0]}, {goal_pos[1]}),  Iteration: {k+1}/{number_of_times}') 
+                            success = True
+                        except Exception as e:
+                            pass
+                                # print(f'Failed on map {i} at ({start_pos[0]}, {start_pos[1]}) , ({goal_pos[0]}, {goal_pos[1]}), Trying again, Iteration{k+1}/{number_of_times}')
+                    time_list.append(end_time - start_time)
+                # print(f'Average time for map {i} with start pos ({start_pos[0]}, {start_pos[1]}) and end pos ({goal_pos[0]}, {goal_pos[1]}) was {sum(time_list) / len(time_list)}')
+                data['path'] = rrt_path
+                data['path_interpolated'] = interpolated_path(rrt_path, 20)
+                data['success'] = True
+                data['times'] = time_list
+                with open(osp.join(new_envFolder, f'path_{j}.p'), 'wb') as f:
+                    pickle.dump(data, f)
+            counter+=1
 ################################################################################################################################################################################           
     #should be 500
+    counter = 0
     for i in tqdm(range(100), desc = "Maze Validation Progress"):
         #print(f'We are on maze {i} of {3000}')
-        old_envFolder = f'maze4\\val\env{i:06d}'
-        new_envFolder = f'new_maze\\val\env{i:06d}'
+        old_envFolder = f'maze4/val/env{i:06d}'
+        new_envFolder = f'new_maze_2/val/env{counter:06d}'
         map_file_path = osp.join(old_envFolder, f'map_{i}.png')
-        new_map_file_path = osp.join(new_envFolder, f'map_{i}.png')
+        new_map_file_path = osp.join(new_envFolder, f'map_{counter}.png')
         os.makedirs(new_envFolder)
         img = cv2.imread(map_file_path, 0)
         img2 = cv2.imread(map_file_path)
         cv2.imwrite(new_map_file_path, img2)
-        #should be 1
-        for j in range(1):
-            #print(f'We are on path {j} of {1} for maze {i}')
-            start_pos, goal_pos = getStart_and_goal(old_envFolder, j)
-            #print(start_pos, goal_pos)
-            val_time_list = []
-            val_number_of_times = 5
-            val_rrt_path = []
-            val_data = {}
-            for k in range(val_number_of_times):
-                success = False
-                while success == False:
-                    try:
-                        node_list = [0]
-                        start_time = time.time()
-                        val_rrt_path = RRT(img, img2, start_pos, goal_pos, 10, False)
-                        end_time = time.time()
-                        print(f'Succeeded on map {i} at ({start_pos[0]}, {start_pos[1]}) , ({goal_pos[0]}, {goal_pos[1]}),  Iteration: {k+1}/{val_number_of_times}')
-                        success = True
-                    except Exception as e:
-                            print(f'Failed on map {i} at ({start_pos[0]}, {start_pos[1]}) , ({goal_pos[0]}, {goal_pos[1]}), Trying again, Iteration{k+1}/{val_number_of_times}')
-                val_time_list.append(end_time - start_time)
-            print(f'Average time for map {i} with start pos ({start_pos[0]}, {start_pos[1]}) and end pos ({goal_pos[0]}, {goal_pos[1]}) was {sum(val_time_list) / len(val_time_list)}')
-            val_data['path'] = val_rrt_path
-            val_data['path_interpolated'] = interpolated_path(val_rrt_path, 20)
-            val_data['times'] = val_time_list
-            with open(osp.join(new_envFolder, f'path_{j}.p'), 'wb') as f:
-                pickle.dump(val_data, f)
-            
+        if os.path.exists(old_envFolder):
+            #should be 1
+            for j in range(1):
+                #print(f'We are on path {j} of {1} for maze {i}')
+                start_pos, goal_pos = getStart_and_goal(old_envFolder, j)
+                #print(start_pos, goal_pos)
+                val_time_list = []
+                val_number_of_times = 5
+                val_rrt_path = []
+                val_data = {}
+                for k in range(val_number_of_times):
+                    success = False
+                    while success == False:
+                        try:
+                            node_list = [0]
+                            start_time = time.time()
+                            val_rrt_path = RRT(img, img2, start_pos, goal_pos, 10, False)
+                            end_time = time.time()
+                            # print(f'Succeeded on map {i} at ({start_pos[0]}, {start_pos[1]}) , ({goal_pos[0]}, {goal_pos[1]}),  Iteration: {k+1}/{val_number_of_times}')
+                            success = True
+                        except Exception as e:
+                            pass
+                            # print(f'Failed on map {i} at ({start_pos[0]}, {start_pos[1]}) , ({goal_pos[0]}, {goal_pos[1]}), Trying again, Iteration{k+1}/{val_number_of_times}')
+                    val_time_list.append(end_time - start_time)
+                # print(f'Average time for map {i} with start pos ({start_pos[0]}, {start_pos[1]}) and end pos ({goal_pos[0]}, {goal_pos[1]}) was {sum(val_time_list) / len(val_time_list)}')
+                val_data['path'] = val_rrt_path
+                val_data['path_interpolated'] = interpolated_path(val_rrt_path, 20)
+                val_data['times'] = val_time_list
+                val_data['success'] = True
+                with open(osp.join(new_envFolder, f'path_{j}.p'), 'wb') as f:
+                    pickle.dump(val_data, f)
+            counter+=1
+                
