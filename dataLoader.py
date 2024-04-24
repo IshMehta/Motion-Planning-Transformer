@@ -34,7 +34,7 @@ def geom2pix(pos, res=0.05, size=(480, 480)):
     v                         |  
     ---------------------------  
     """
-    return (np.int(np.floor(pos[0]/res)), np.int(size[0]-1-np.floor(pos[1]/res)))
+    return (np.int32(np.floor(pos[0]/res)), np.int32(size[0]-1-np.floor(pos[1]/res)))
 
 def PaddedSequence(batch):
     '''
