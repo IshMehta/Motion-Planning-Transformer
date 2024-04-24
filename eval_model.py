@@ -20,9 +20,8 @@ import time
 # except ImportError:
 #     raise ImportError("Container does not have OMPL installed")
 
-from transformer import Models as tfModel
-# from unet import Models as unetModel
-# from utils import geom2pix, ValidityChecker
+from transformer import Models
+
 from dataLoader import get_encoder_input
 
 res = 0.05
@@ -201,54 +200,51 @@ def get_patch_unet(model, start_pos, goal_pos, input_map):
 
 device='cuda' if torch.cuda.is_available() else 'cpu'
 
-# if __name__=="__main__":
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument(
-#         '--segmentType',
-#         help='The underlying segmentation method to use',
-#         required=True,
-#         choices=['mpt', 'unet']
-#     )
-#     parser.add_argument(
-#         '--plannerType', 
-#         help='The underlying sampler to use', 
-#         required=True, 
-#         choices=['rrtstar', 'informedrrtstar']
-#     )
-#     parser.add_argument('--modelFolder', help='Directory where model_params.json exists', required=True)
-#     parser.add_argument('--valDataFolder', help='Directory where training data exists', required=True)
-#     parser.add_argument('--start', help='Start of environment number', required=True, type=int)
-#     parser.add_argument('--numEnv', help='Number of environments', required=True, type=int)
-#     parser.add_argument('--epoch', help='Model epoch number to test', required=True, type=int)
-#     parser.add_argument('--numPaths', help='Number of start and goal pairs for each env', default=1, type=int)
-#     parser.add_argument('--explore', help='Explore the environment w/o the mask', dest='explore', action='store_true')
-#     parser.add_argument('--mapSize', help='The size of the input map', default='')
+if __name__=="__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--segmentType',
+        help='The underlying segmentation method to use',
+        required=True,
+        choices=['mpt', 'unet']
+    )
+    parser.add_argument(
+        '--plannerType', 
+        help='The underlying sampler to use', 
+        required=True, 
+        choices=['rrtstar', 'informedrrtstar']
+    )
+    parser.add_argument('--modelFolder', help='Directory where model_params.json exists', required=True)
+    parser.add_argument('--valDataFolder', help='Directory where training data exists', required=True)
+    parser.add_argument('--start', help='Start of environment number', required=True, type=int)
+    parser.add_argument('--numEnv', help='Number of environments', required=True, type=int)
+    parser.add_argument('--epoch', help='Model epoch number to test', required=True, type=int)
+    parser.add_argument('--numPaths', help='Number of start and goal pairs for each env', default=1, type=int)
+    parser.add_argument('--explore', help='Explore the environment w/o the mask', dest='explore', action='store_true')
+    parser.add_argument('--mapSize', help='The size of the input map', default='')
 
-#     args = parser.parse_args()
+    args = parser.parse_args()
 
-#     modelFolder = args.modelFolder
-#     modelFile = osp.join(modelFolder, f'model_params.json')
-#     assert osp.isfile(modelFile), f"Cannot find the model_params.json file in {modelFolder}"
+    modelFolder = args.modelFolder
+    modelFile = osp.join(modelFolder, f'model_params.json')
+    assert osp.isfile(modelFile), f"Cannot find the model_params.json file in {modelFolder}"
 
-#     start = args.start
+    start = args.start
 
-#     model_param = json.load(open(modelFile))
-#     if args.segmentType =='mpt':
-#         model = tfModel.Transformer(
-#             **model_param
-#         )
-#     elif args.segmentType == 'unet':
-#         model = unetModel.UNet(
-#             **model_param
-#         )
+    model_param = json.load(open(modelFile))
+    if args.segmentType =='mpt':
+        model = Models.Transformer(
+            **model_param
+        )
 
-#     model.to(device)
 
-#     receptive_field=32
-#     # Load model parameters
-#     epoch = args.epoch
-#     checkpoint = torch.load(osp.join(modelFolder, f'model_epoch_{epoch}.pkl'))
-#     model.load_state_dict(checkpoint['state_dict'])
+    model.to(device)
+
+    receptive_field=32
+    # Load model parameters
+    epoch = args.epoch
+    checkpoint = torch.load(osp.join(modelFolder, f'model_epoch_{epoch}.pkl'))
+    model.load_state_dict(checkpoint['state_dict'])
 
 #     # valDataFolder
 #     valDataFolder = args.valDataFolder
