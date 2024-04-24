@@ -96,14 +96,14 @@ def eval_epoch(model, validationData, device):
     return total_loss, total_n_correct
 
 if __name__ == "__main__":
-    batch_size = 16
-    dataFolder="new_maze/"
+    batch_size = 32
+    dataFolder="maze4/"
     print(f"Using data from {dataFolder}")
 
     device = 'cpu'
-    # if torch.cuda.is_available():
-    #     print("Using GPU....")
-    #     device = torch.device('cuda')
+    if torch.cuda.is_available():
+        print("Using GPU....")
+        device = torch.device('cuda')
 
     if torch.cuda.device_count() > 1:
         batch_size = batch_size * torch.cuda.device_count()
@@ -141,20 +141,20 @@ if __name__ == "__main__":
     )
        
     trainDataset = PathDataLoader(
-        env_list=list(range(10)),
+        env_list=list(range(3000)),
         dataFolder=osp.join(dataFolder, 'train')
     )
     trainingData = DataLoader(trainDataset, num_workers=12, collate_fn=PaddedSequence, batch_size=batch_size)
 
     # Validation Data
     valDataset = PathDataLoader(
-        env_list=list(range(10)),
+        env_list=list(range(2500)),
         dataFolder=osp.join(dataFolder, 'val')
     )
     validationData = DataLoader(valDataset, num_workers=12, collate_fn=PaddedSequence, batch_size=batch_size)
 
     # Increase number of epochs.
-    n_epochs = 50
+    n_epochs = 70
     results = {}
     train_loss = []
     val_loss = []
@@ -173,7 +173,7 @@ if __name__ == "__main__":
     # Check if checkpoint exists and load it
     try:
         checkpoint = torch.load("checkpoint.pt")
-        transformer.load_state_dict(checkpoint['model_state_dict'])
+        transformer.load_state_dict(checkpoint['model_state_dict']) 
         optimizer._optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         start_epoch = checkpoint['epoch'] + 1  # Continue from next epoch
         print(f"Loaded checkpoint from epoch {checkpoint['epoch']}")
@@ -226,5 +226,5 @@ if __name__ == "__main__":
         'model_state_dict': transformer.state_dict(),
         'optimizer_state_dict': optimizer._optimizer.state_dict(),
         'loss': train_total_loss,
-    }, "checkpoint.pt")
+    }, "checkpoint_benchmark.pt")
     print(f"Checkpoint saved at epoch {n}")
