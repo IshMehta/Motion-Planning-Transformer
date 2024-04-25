@@ -12,7 +12,9 @@ from os import path as osp
 import argparse
 import json
 import time
-
+from tqdm import tqdm
+import cv2
+from rrt import RRT, getStart_and_goal
 # try:
 #     from ompl import base as ob
 #     from ompl import geometric as og
@@ -164,14 +166,16 @@ def get_patch(model, start_pos, goal_pos, input_map):
     :param input_map:
     '''
     # Identitfy Anchor points
+    # print("hello")
     encoder_input = get_encoder_input(input_map, goal_pos, start_pos)
     hashTable = getHashTable(input_map.shape)
     predVal = model(encoder_input[None,:].float().cuda())
     predClass = predVal[0, :, :].max(1)[1]
+    # print(predClass.shape, predVal.shape)
 
     predProb = F.softmax(predVal[0, :, :], dim=1)
+    # print(set(predClass))
     possAnchor = [hashTable[i] for i, label in enumerate(predClass) if label==1]
-
     # Generate Patch Maps
     patch_map = np.zeros_like(input_map)
     map_size = input_map.shape
@@ -201,55 +205,102 @@ def get_patch_unet(model, start_pos, goal_pos, input_map):
 device='cuda' if torch.cuda.is_available() else 'cpu'
 
 if __name__=="__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '--segmentType',
-        help='The underlying segmentation method to use',
-        required=True,
-        choices=['mpt', 'unet']
-    )
-    parser.add_argument(
-        '--plannerType', 
-        help='The underlying sampler to use', 
-        required=True, 
-        choices=['rrtstar', 'informedrrtstar']
-    )
-    parser.add_argument('--modelFolder', help='Directory where model_params.json exists', required=True)
-    parser.add_argument('--valDataFolder', help='Directory where training data exists', required=True)
-    parser.add_argument('--start', help='Start of environment number', required=True, type=int)
-    parser.add_argument('--numEnv', help='Number of environments', required=True, type=int)
-    parser.add_argument('--epoch', help='Model epoch number to test', required=True, type=int)
-    parser.add_argument('--numPaths', help='Number of start and goal pairs for each env', default=1, type=int)
-    parser.add_argument('--explore', help='Explore the environment w/o the mask', dest='explore', action='store_true')
-    parser.add_argument('--mapSize', help='The size of the input map', default='')
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument(
+    #     '--segmentType',
+    #     help='The underlying segmentation method to use',
+    #     required=True,
+    #     choices=['mpt', 'unet']
+    # )
+    # parser.add_argument(
+    #     '--plannerType', 
+    #     help='The underlying sampler to use', 
+    #     required=True, 
+    #     choices=['rrtstar', 'informedrrtstar']
+    # )
+    # parser.add_argument('--modelFolder', help='Directory where model_params.json exists', required=True)
+    # parser.add_argument('--valDataFolder', help='Directory where training data exists', required=True)
+    # parser.add_argument('--start', help='Start of environment number', required=True, type=int)
+    # parser.add_argument('--numEnv', help='Number of environments', required=True, type=int)
+    # parser.add_argument('--epoch', help='Model epoch number to test', required=True, type=int)
+    # parser.add_argument('--numPaths', help='Number of start and goal pairs for each env', default=1, type=int)
+    # parser.add_argument('--explore', help='Explore the environment w/o the mask', dest='explore', action='store_true')
+    # parser.add_argument('--mapSize', help='The size of the input map', default='')
 
-    args = parser.parse_args()
+    # args = parser.parse_args()
 
-    modelFolder = args.modelFolder
+    modelFolder = 'training_results'
     modelFile = osp.join(modelFolder, f'model_params.json')
     assert osp.isfile(modelFile), f"Cannot find the model_params.json file in {modelFolder}"
 
-    start = args.start
+    # start = args.start
 
     model_param = json.load(open(modelFile))
-    if args.segmentType =='mpt':
-        model = Models.Transformer(
-            **model_param
-        )
+    # if args.segmentType =='mpt':
+    model = Models.Transformer(**model_param )
 
 
     model.to(device)
 
     receptive_field=32
     # Load model parameters
-    epoch = args.epoch
-    checkpoint = torch.load(osp.join(modelFolder, f'model_epoch_{epoch}.pkl'))
-    model.load_state_dict(checkpoint['state_dict'])
+    # epoch = args.epoch
+    checkpoint = torch.load('checkpoint.pt')
+    model.load_state_dict(checkpoint['model_state_dict'])
 
-#     # valDataFolder
-#     valDataFolder = args.valDataFolder
-#     # Only do evaluation - Need this for the problem to work with maps of different sizes.
-#     model.eval()
+    # valDataFolder
+    # valDataFolder = args.valDataFolder
+    result_envFolder = 'result/'
+    # Only do evaluation - Need this for the problem to work with maps of different sizes.
+    model.eval()
+    total_success = 0
+    number_of_faster = 0
+    for i in tqdm(range(100), desc = "Maze Evaluation Progress"):
+        val_envFolder = f'new_maze/val/env{i:06d}'
+        map_file_path = osp.join(val_envFolder, f'map_{i}.png')
+        img = cv2.imread(map_file_path, 0)
+        img2 = cv2.imread(map_file_path)
+        start_pos, goal_pos = getStart_and_goal(val_envFolder, 0)
+        # create new maze
+        patch_map, predProb = get_patch(model, start_pos, goal_pos, img)
+        MazeMap_new = np.zeros_like(img)
+        MazeMap_new[np.argwhere(patch_map == 1.0)] = 255
+        val_time_list = []
+        val_number_of_times = 10
+        # number of attmempts
+        data ={}
+        for j in range(val_number_of_times):
+            success = False
+            try:
+                # print("try")
+                node_list = [0]
+                start_time = time.time()
+                val_rrt_path = RRT(img, img2, start_pos, goal_pos, 10, False)
+                end_time = time.time()
+                # print(f'Succeeded on map {i} at ({start_pos[0]}, {start_pos[1]}) , ({goal_pos[0]}, {goal_pos[1]}),  Iteration: {k+1}/{val_number_of_times}')
+                success = True
+            except Exception as e:
+                pass
+
+            if success:
+                val_time_list.append(end_time - start_time)
+        data['success'] = False
+        if len(val_time_list) != 0:
+            data['success'] = True
+            data['times'] = val_time_list
+            data['average_time'] = sum(val_time_list) / len(val_time_list)
+            total_success +=1
+            comparison = pickle.load(open(osp.join(val_envFolder, 'path_0.p'), 'rb'))
+            old_time = sum( comparison['times'] ) / len(comparison['times'])
+            if data['average_time'] > old_time:
+                 number_of_faster +=1
+        with open(osp.join(result_envFolder, f'path_{j}.p'), 'wb') as f:
+                    pickle.dump(data, f)
+
+    print(f'Total success: {total_success} / {100}')
+    print(f'Faster completeion ratio: {number_of_faster} / {total_success}')
+    
+        
 #     # Get path data
 #     pathSuccess = []
 #     pathTime = []
